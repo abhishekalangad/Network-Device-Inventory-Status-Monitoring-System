@@ -330,13 +330,79 @@ public class Main {
          * @return true if reachable (Online), false otherwise (Offline)
          */
         public static boolean isReachable(String ipAddress) {
+            // 1. Try Java's native isReachable (fastest, uses ICMP/TCP echo if permitted)
             try {
                 InetAddress address = InetAddress.getByName(ipAddress);
-                return address.isReachable(TIMEOUT_MS);
+                if (address.isReachable(TIMEOUT_MS)) {
+                    return true;
+                }
             } catch (Exception e) {
-                // Any network error → treat device as Offline
-                return false;
+                // Fall back
             }
+
+            // 2. Try native ping command (more reliable for ICMP across different systems)
+            try {
+                String os = System.getProperty("os.name").toLowerCase();
+                ProcessBuilder pb;
+                if (os.contains("win")) {
+                    pb = new ProcessBuilder("ping", "-n", "1", "-w", String.valueOf(TIMEOUT_MS), ipAddress);
+                } else {
+                    pb = new ProcessBuilder("ping", "-c", "1", "-W", String.valueOf(TIMEOUT_MS / 1000), ipAddress);
+                }
+                Process process = pb.start();
+                
+                // Read the output to check for "TTL=" in the response (indicates successful echo reply)
+                boolean hasTtl = false;
+                try (java.io.BufferedReader reader = new java.io.BufferedReader(new java.io.InputStreamReader(process.getInputStream()))) {
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        if (line.toUpperCase().contains("TTL=")) {
+                            hasTtl = true;
+                        }
+                    }
+                }
+                
+                int exitCode = process.waitFor();
+                if (exitCode == 0 && (os.contains("win") ? hasTtl : true)) {
+                    return true;
+                }
+            } catch (Exception e) {
+                // Fall back
+            }
+
+            // 3. Try checking local ARP cache (extremely useful for local subnet devices behind firewalls)
+            try {
+                String os = System.getProperty("os.name").toLowerCase();
+                ProcessBuilder pb;
+                if (os.contains("win")) {
+                    pb = new ProcessBuilder("arp", "-a");
+                } else {
+                    pb = new ProcessBuilder("arp", "-n");
+                }
+                Process process = pb.start();
+                try (java.io.BufferedReader reader = new java.io.BufferedReader(new java.io.InputStreamReader(process.getInputStream()))) {
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        if (line.contains(ipAddress)) {
+                            String lower = line.toLowerCase();
+                            // Only consider it if it shows a dynamic/static ARP resolution entry
+                            if (lower.contains("dynamic") || lower.contains("static")) {
+                                String[] parts = line.trim().split("\\s+");
+                                for (String part : parts) {
+                                    if (part.equals(ipAddress)) {
+                                        return true;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                process.waitFor();
+            } catch (Exception e) {
+                // Ignore
+            }
+
+            return false;
         }
 
         /**
