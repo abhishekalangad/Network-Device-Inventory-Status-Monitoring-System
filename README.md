@@ -241,13 +241,13 @@ Enter Choice:
 ```
   [ ADD NEW DEVICE ]
   ------------------------------------------
-  Device ID       : D101
-  Device Name     : Maverick
-  IP Address      : 10.187.2.118
-  MAC Address     : (optional, press Enter to skip) 0A-00-27-00-00-04
-  Device Type     : Laptop
-  Location        : Ratanhall
-  Description     : Abhishek
+  Device ID       : DEV-001
+  Device Name     : Office-Router
+  IP Address      : 192.168.1.1
+  MAC Address     : (optional, press Enter to skip)
+  Device Type     : Router
+  Location        : Server Room
+  Description     : Main office gateway router
 
   ✔  Device Added Successfully.
 ```
@@ -255,15 +255,15 @@ Enter Choice:
 ### View All Devices
 ```
 ---------------------------------------------------
-  Device ID    : D101
-  Name         : Maverick
-  IP Address   : 10.187.2.118
-  MAC Address  : 0A-00-27-00-00-04
-  Type         : Laptop
-  Location     : Ratanhall
-  Description  : Abhishek
-  Status       : Offline
-  Last Checked : 2026-07-10 11:47:52
+  Device ID    : DEV-001
+  Name         : Office-Router
+  IP Address   : 192.168.1.1
+  MAC Address  : N/A
+  Type         : Router
+  Location     : Server Room
+  Description  : Main office gateway router
+  Status       : Online
+  Last Checked : 2026-07-10 10:00:00
 ---------------------------------------------------
 ```
 
@@ -271,11 +271,12 @@ Enter Choice:
 ```
   Checking Devices...
 
-  Maverick......................  OFFLINE
-  Hassn Laptop..................  ONLINE
+  Office-Router.................  ONLINE
+  Lab-Switch....................  ONLINE
+  Dev-Server....................  OFFLINE
 
   ------------------------------------------
-  Online : 1   |   Offline : 1
+  Online : 2   |   Offline : 1
   ------------------------------------------
   Scan Completed.
 ```
