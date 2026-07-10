@@ -324,7 +324,8 @@ public class Main {
 
         /**
          * Tests whether the given IP address is reachable within
-         * {@value #TIMEOUT_MS} milliseconds using ICMP / TCP echo.
+         * {@value #TIMEOUT_MS} milliseconds. Uses system ping as fallback
+         * because InetAddress.isReachable often fails on Windows due to ICMP privileges.
          *
          * @param ipAddress the IPv4 address to probe
          * @return true if reachable (Online), false otherwise (Offline)
@@ -336,36 +337,17 @@ public class Main {
                 if (address.isReachable(TIMEOUT_MS)) {
                     return true;
                 }
-            } catch (Exception e) {
-                // Fall back
-            }
-
-            // 2. Try native ping command (more reliable for ICMP across different systems)
-            try {
+                
+                // Fallback to system ping
                 String os = System.getProperty("os.name").toLowerCase();
                 ProcessBuilder pb;
                 if (os.contains("win")) {
                     pb = new ProcessBuilder("ping", "-n", "1", "-w", String.valueOf(TIMEOUT_MS), ipAddress);
                 } else {
-                    pb = new ProcessBuilder("ping", "-c", "1", "-W", String.valueOf(TIMEOUT_MS / 1000), ipAddress);
+                    pb = new ProcessBuilder("ping", "-c", "1", "-W", String.valueOf(Math.max(1, TIMEOUT_MS / 1000)), ipAddress);
                 }
-                Process process = pb.start();
-                
-                // Read the output to check for "TTL=" in the response (indicates successful echo reply)
-                boolean hasTtl = false;
-                try (java.io.BufferedReader reader = new java.io.BufferedReader(new java.io.InputStreamReader(process.getInputStream()))) {
-                    String line;
-                    while ((line = reader.readLine()) != null) {
-                        if (line.toUpperCase().contains("TTL=")) {
-                            hasTtl = true;
-                        }
-                    }
-                }
-                
-                int exitCode = process.waitFor();
-                if (exitCode == 0 && (os.contains("win") ? hasTtl : true)) {
-                    return true;
-                }
+                Process p = pb.start();
+                return p.waitFor() == 0;
             } catch (Exception e) {
                 // Fall back
             }
