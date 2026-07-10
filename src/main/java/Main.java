@@ -324,7 +324,8 @@ public class Main {
 
         /**
          * Tests whether the given IP address is reachable within
-         * {@value #TIMEOUT_MS} milliseconds using ICMP / TCP echo.
+         * {@value #TIMEOUT_MS} milliseconds. Uses system ping as fallback
+         * because InetAddress.isReachable often fails on Windows due to ICMP privileges.
          *
          * @param ipAddress the IPv4 address to probe
          * @return true if reachable (Online), false otherwise (Offline)
@@ -332,7 +333,20 @@ public class Main {
         public static boolean isReachable(String ipAddress) {
             try {
                 InetAddress address = InetAddress.getByName(ipAddress);
-                return address.isReachable(TIMEOUT_MS);
+                if (address.isReachable(TIMEOUT_MS)) {
+                    return true;
+                }
+                
+                // Fallback to system ping
+                String os = System.getProperty("os.name").toLowerCase();
+                ProcessBuilder pb;
+                if (os.contains("win")) {
+                    pb = new ProcessBuilder("ping", "-n", "1", "-w", String.valueOf(TIMEOUT_MS), ipAddress);
+                } else {
+                    pb = new ProcessBuilder("ping", "-c", "1", "-W", String.valueOf(Math.max(1, TIMEOUT_MS / 1000)), ipAddress);
+                }
+                Process p = pb.start();
+                return p.waitFor() == 0;
             } catch (Exception e) {
                 // Any network error → treat device as Offline
                 return false;
